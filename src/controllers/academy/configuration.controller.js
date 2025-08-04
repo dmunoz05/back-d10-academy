@@ -1,8 +1,12 @@
-import { updatePasswordHashUser, searchLoginUserById } from './users.controller.js'
+import { updatePasswordHashUser, searchLoginUserById, searchUserLogin } from './users.controller.js'
 import { hashPassword, verifyPassword } from '../../utils/auth/handle-password.js'
 import { responseQueries } from '../../common/enum/queries/response.queries.js'
+import { responseJWT } from '../../common/enum/jwt/response.jwt.js'
 import { variablesDB } from '../../utils/params/const.database.js'
+import { generateToken } from '../../utils/token/handle-token.js'
+import { sendEmailFunction } from '../../lib/api/email.api.js'
 import getConnection from '../../database/connection.mysql.js'
+import { getRoleUser } from './role.controller.js'
 
 export const getUserInfo = async (req, res) => {
     const conn = await getConnection()
@@ -13,41 +17,70 @@ export const getUserInfo = async (req, res) => {
     return res.json(responseQueries.success({ data: select[0] }))
 }
 
-// export const updateUserInfoById = async (req, res) => {
-//     const { id_user, first_name, last_name, user_name, address, city, role_id, church, id } = req.body
-//     pool.query("UPDATE user_info SET id_user=?, first_name=?, last_name=?, user_name=?, address=?, city=?, role_id=?, church=? WHERE id=?", [id_user, first_name, last_name, user_name, address, city, role_id, church, id], async (err, result) => {
-//         if (err) {
-//             res.send({ message: "Error en el actualizado", error: err })
-//             return
-//         }
-//         pool.query("UPDATE user_login SET username=? WHERE id=?", [user_name, id], async (err, result) => {
-//             if (err) {
-//                 res.send({ message: "Error en el actualizado", error: err })
-//                 return
-//             }
-//             res.send({ usuario: result })
-//         })
-//     })
-// }
+export const getRecoverPaswordUser = async (req, res) => {
+    const { email } = req.body
+    if (!email) {
+        return res.status(400).json(responseQueries.error({ message: 'Email is required', status: 400, token: null, user: null }))
+    }
+    const userExist = await searchUserLogin({ username: email })
+    if (userExist.error) {
+        res.json(responseJWT.error({ message: userExist.message, status: userExist.status, token: null, user: null }))
+        return
+    }
+    const role = await getRoleUser(userExist.data[0].id_user);
+    if (role.error) {
+        res.json(responseJWT.error({ message: role.message, status: role.status, token: null, user: null }))
+        return
+    }
+    const tokenUsername = await generateToken({
+        sub: userExist.data[0].id_user,
+        username: userExist.data[0].username
+    })
+    const tokenPassword = await generateToken({
+        sub: userExist.data[0].id_user,
+        password: userExist.data[0].password
+    })
+    const tokenRole = await generateToken({
+        sub: userExist.data[0].id_user,
+        role: role.data[0].description_role
+    })
+    const sendMail = await sendEmailFunction({ name: '', username: tokenUsername, password: tokenPassword, email: email, type: 'recover_password', role_user: tokenRole })
+    return res.json(responseQueries.success({ message: "Success solitude recover", data: sendMail }));
+}
 
-// Función para generar un código de verificación de correo a partir del token hash
-// export async function generativeCodeVerification(tokenHash) {
-//     const codeVerify = bcrypt.hashSync(tokenHash, 8)
-//     return codeVerify.slice(0, 8)
-// }
+// export const updateUserLoginById = async (req, res) => {
+//     const { user_id, username, passwordNew, passwordOld, verify } = req.body
 
-// export const updatePasswordSolitudeUserById = async (req, res) => {
-//     const { passwordOld, email } = req.body
-//     //Generar código de verificación de correo a partir del token hash
-//     const code = await generativeCodeVerification(passwordOld)
-//     try {
-//         //Enviar correo de solicitud cambio contraseña
-//         const result = await sendEmailSolitudeChangePassword(code, email)
-//         res.send({ "message": "Solicitud enviada", "code": code, "result": result })
-//     } catch (error) {
-//         res.status(500).send({ "Error envio correo": error })
-//         return
+//     const userExist = await searchLoginUserById({ id: user_id })
+//     if (userExist.error) {
+//         return res.json(responseQueries.error({
+//             message: userExist.message,
+//             status: userExist.status,
+//             token: null,
+//             user: null
+//         }))
 //     }
+
+//     const userPasswordHash = userExist.data[0].password
+
+//     const isPasswordCorrect = await verifyPassword(passwordOld, userPasswordHash)
+//     if (!isPasswordCorrect) {
+//         return res.status(400).json(responseQueries.success({ message: "Contraseña incorrecta" }))
+//     }
+
+//     const passwordHash = await hashPassword({ password: passwordNew })
+
+//     const updatePassword = await updatePasswordHashUser({
+//         id: user_id,
+//         password: passwordHash.password,
+//         verify: !verify
+//     })
+
+//     if (!updatePassword) {
+//         return res.status(400).json(responseQueries.success({ message: "Error al actualizar la contraseña" }))
+//     }
+
+//     return res.status(200).json(responseQueries.success({ message: "Contraseña actualizada correctamente" }))
 // }
 
 export const updateUserLoginById = async (req, res) => {
@@ -57,9 +90,12 @@ export const updateUserLoginById = async (req, res) => {
         res.json(responseQueries.error({ message: userExist.message, status: userExist.status, token: null, user: null }))
         return
     }
-    const verifyPasswordOld = await verifyPassword(passwordOld, userExist.data[0].password);
-    if (!verifyPasswordOld && userExist.data[0].password !== passwordOld) {
-        return res.status(400).json(responseQueries.success({ message: "Contraseña incorrecta" }))
+    const looksLikeHash = passwordOld.startsWith('$2b$') && passwordOld.length > 50
+    if(passwordOld !== userExist.data[0].password && !looksLikeHash) {
+        const verifyPasswordOld = await verifyPassword(passwordOld, userExist.data[0].password);
+        if (!verifyPasswordOld && userExist.data[0].password !== passwordOld) {
+            return res.status(400).json(responseQueries.success({ message: "Contraseña incorrecta" }))
+        }
     }
     const passwordHash = await hashPassword({ id: user_id, username: username, email: username, password: passwordNew })
     const updatePassword = await updatePasswordHashUser({ id: user_id, password: passwordHash.password, verify: !verify })
