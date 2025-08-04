@@ -1,3 +1,4 @@
+import { htmlTemplateRecoverPassword } from "../../ui/template/recoverPassword/index.js";
 import { htmlTemplateRegisterCoach } from "../../ui/template/registerCoach/index.js";
 import { htmlTemplateRegisterClub } from "../../ui/template/registerClub/index.js";
 import { generateToken, verifyToken } from "../../utils/token/handle-token.js";
@@ -193,6 +194,36 @@ async function mailDenied(name, email) {
     }
 }
 
+async function mailRecoverPassword(username, password, email, role_user) {
+    let url = `username=${username}&password=${password}&role_user=${role_user}`
+    let tokenCode = await generateToken({
+        sub: username,
+        token: url
+    }, '2h')
+    try {
+        const my = await transporter.sendMail({
+            from: `D10+ Academy <${user_}>`,
+            to: `"${email}"`,
+            subject: "Solicitud recordar contraseña ⚽😉",
+            html: htmlTemplateRecoverPassword(tokenCode),
+        });
+
+        return responseEmail.success({
+            message: "Success send mail",
+            messageId: my.messageId,
+            mail: {
+                from: my.envelope.from,
+                to: my.envelope.to
+            }
+        });
+    } catch (error) {
+        return responseEmail.error({
+            message: "Error send mail",
+            data: []
+        });
+    }
+}
+
 export const mailContact = async (req, res) => {
     const { name, email, message } = req.body
     try {
@@ -237,6 +268,8 @@ async function main(name, username, password, email, type, role_user) {
         response = await mailRegisterAdmin(name, username, email, role_user)
     } else if (type == 'denied') {
         response = await mailDenied(name, email)
+    } else if (type == 'recover_password') {
+        response = await mailRecoverPassword(username, password, email, role_user)
     } else if (type == undefined || type == null) {
         return responseEmail.error({
             message: "Error send mail",
