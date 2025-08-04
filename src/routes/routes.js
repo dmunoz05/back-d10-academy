@@ -20,7 +20,7 @@ import { getSolitudeUsersCoach, getSolitudeUsersClub, approvedSolitude, deniedSo
 import { getAllPermissionsAndRole, getPermissionsByIdUser, getPermissionsByRoleAdmin, getPermissionsByRoleUser } from '../controllers/academy/permissions.controller.js';
 import { getClassMenu, getClassContent, getClassComments, saveClassComment } from '../controllers/academy/class.controller.js';
 import { getCoach, searchCoachFilter, registerCoach } from '../controllers/academy/coach.controller.js';
-import { updateUserLoginById, getUserInfo } from '../controllers/academy/configuration.controller.js';
+import { updateUserLoginById, getUserInfo, getRecoverPaswordUser } from '../controllers/academy/configuration.controller.js';
 import { getClub, searchClubFilter, registerClub } from '../controllers/academy/club.controller.js';
 import { getAllRoles, getRoleUserByIdUser } from '../controllers/academy/role.controller.js';
 import { getAthletes, registerAthlete } from '../controllers/academy/athletes.controller.js';
@@ -115,6 +115,7 @@ export const routes = () => {
     router.get('/academy/permissions/user/:role_id', AuthorizationVerify, getPermissionsByRoleUser);
     router.post('/academy/config/user/p/login', AuthorizationVerify, updateUserLoginById);
     router.get('/academy/config/user/g/login/:id_user', AuthorizationVerify, getUserInfo);
+    router.post('/academy/config/user/p/recover', AuthorizationVerify, getRecoverPaswordUser);
     router.get('/academy/user/role/:id_user', AuthorizationVerify, getRoleUserByIdUser);
     router.get('/academy/user/categories', AuthorizationVerify, getCategoriesForRegister);
 

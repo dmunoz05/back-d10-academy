@@ -39,18 +39,22 @@ app.listen(PORT, async () => {
     // Conectarse a la base de datos
     const connDb = await getConnection();
     if (!connDb) {
-        console.log("\n*****************************");
-        console.log("Error conectando la base de datos");
-        console.log("*****************************\n");
-        process.exit(1); // Opcional: detener el servidor si no se conecta
+          console.log("\n╔══════════════════════════════════════════════╗");
+        console.log("║     ⚠️  ERROR: Fallo al conectar DB  ⚠️     ║");
+        console.log("╠══════════════════════════════════════════════╣");
+        console.log("║ No se pudo establecer conexión con la base   ║");
+        console.log("║ de datos. Verifique la configuración y el    ║");
+        console.log("║ estado del servidor.                         ║");
+        console.log("╚══════════════════════════════════════════════╝\n");
+        process.exit(1); // Detener el servidor si no se conecta
     }
     else {
-        console.log("\n*****************************");
-        console.log("Base de datos conectada correctamente");
-        console.log("*****************************\n");
-
-        console.log("*****************************");
-        console.log(`Servicio iniciado en http://localhost:${PORT}/d10/server/v1`);
-        console.log("*****************************\n");
+         console.log("\n╔════════════════════════════════════════════════════════╗");
+        console.log("║                DB conectada correctamente              ║");
+        console.log("╠════════════════════════════════════════════════════════╣");
+        console.log("║    Servicio iniciado en:                               ║");
+        console.log("║                                                        ║");
+        console.log(`║    http://localhost:${PORT}/d10/server/v1                 ║`);
+        console.log("╚════════════════════════════════════════════════════════╝\n");
     }
 });
